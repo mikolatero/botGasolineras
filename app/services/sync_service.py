@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -22,12 +23,30 @@ from app.utils.timezone import madrid_tz, now_madrid
 logger = logging.getLogger(__name__)
 
 
+_ENCODED_DATASET_FIELD_RE = re.compile(r"_x([0-9A-Fa-f]{4})_")
+
+
 @dataclass(slots=True)
 class PriceSnapshot:
     station_id: str
     fuel_id: int
     price: Decimal
     dataset_timestamp: datetime
+
+
+def _decode_dataset_field_name(value: str) -> str:
+    return _ENCODED_DATASET_FIELD_RE.sub(lambda match: chr(int(match.group(1), 16)), value)
+
+
+def _get_dataset_value(item: dict[str, Any], field_name: str) -> Any:
+    if field_name in item:
+        return item[field_name]
+
+    decoded_field_name = _decode_dataset_field_name(field_name)
+    if decoded_field_name in item:
+        return item[decoded_field_name]
+
+    return None
 
 
 class SyncService:
@@ -167,19 +186,19 @@ class SyncService:
         price_snapshots: dict[tuple[str, int], PriceSnapshot] = {}
 
         for item in raw_stations:
-            ideess = clean_text(item.get("IDEESS"))
+            ideess = clean_text(_get_dataset_value(item, "IDEESS"))
             if not ideess:
                 continue
 
-            postal_code = digits_only(item.get("C.P."))
+            postal_code = digits_only(_get_dataset_value(item, "C.P."))
             if postal_code and len(postal_code) < 5:
                 postal_code = postal_code.zfill(5)
 
-            address = clean_text(item.get("Direcci\u00f3n")) or "Direccion no disponible"
-            locality = clean_text(item.get("Localidad"))
-            municipality = clean_text(item.get("Municipio")) or locality or "Municipio no disponible"
-            province = clean_text(item.get("Provincia")) or "Provincia no disponible"
-            brand = clean_text(item.get("R\u00f3tulo")) or "Sin rotulo"
+            address = clean_text(_get_dataset_value(item, "Direcci\u00f3n")) or "Direccion no disponible"
+            locality = clean_text(_get_dataset_value(item, "Localidad"))
+            municipality = clean_text(_get_dataset_value(item, "Municipio")) or locality or "Municipio no disponible"
+            province = clean_text(_get_dataset_value(item, "Provincia")) or "Provincia no disponible"
+            brand = clean_text(_get_dataset_value(item, "R\u00f3tulo")) or "Sin rotulo"
 
             station_rows.append(
                 {
@@ -195,15 +214,15 @@ class SyncService:
                     "province_normalized": normalize_text(province) or "",
                     "brand": brand,
                     "brand_normalized": normalize_text(brand) or "",
-                    "schedule": clean_text(item.get("Horario")),
-                    "margin": clean_text(item.get("Margen")),
-                    "sale_type": clean_text(item.get("Tipo_x0020_Venta")),
-                    "remision": clean_text(item.get("Remisi\u00f3n")),
-                    "locality_code": clean_text(item.get("IDMunicipio")),
-                    "province_code": clean_text(item.get("IDProvincia")),
-                    "autonomous_region_code": clean_text(item.get("IDCCAA")),
-                    "latitude": parse_coordinate(item.get("Latitud")),
-                    "longitude": parse_coordinate(item.get("Longitud_x0020__x0028_WGS84_x0029_")),
+                    "schedule": clean_text(_get_dataset_value(item, "Horario")),
+                    "margin": clean_text(_get_dataset_value(item, "Margen")),
+                    "sale_type": clean_text(_get_dataset_value(item, "Tipo_x0020_Venta")),
+                    "remision": clean_text(_get_dataset_value(item, "Remisi\u00f3n")),
+                    "locality_code": clean_text(_get_dataset_value(item, "IDMunicipio")),
+                    "province_code": clean_text(_get_dataset_value(item, "IDProvincia")),
+                    "autonomous_region_code": clean_text(_get_dataset_value(item, "IDCCAA")),
+                    "latitude": parse_coordinate(_get_dataset_value(item, "Latitud")),
+                    "longitude": parse_coordinate(_get_dataset_value(item, "Longitud_x0020__x0028_WGS84_x0029_")),
                     "is_active": True,
                     "updated_at": observed_at,
                 }
@@ -211,7 +230,7 @@ class SyncService:
 
             for price_key in SUPPORTED_PRICE_KEYS:
                 fuel_config = FUEL_BY_DATASET_KEY[price_key]
-                price_value = parse_decimal(item.get(price_key))
+                price_value = parse_decimal(_get_dataset_value(item, price_key))
                 if price_value is None:
                     continue
                 key = (ideess, int(fuel_config["id"]))

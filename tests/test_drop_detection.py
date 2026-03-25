@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 
 from app.models.notification import NotificationSent
+from app.models.station_price import StationPriceCurrent
 from app.models.user import User
 from app.models.watchlist import UserWatchlist
 from app.repositories.watchlists import WatchlistsRepository
@@ -42,6 +43,33 @@ def _payload(price: str) -> dict:
                 "IDProvincia": "30",
                 "IDCCAA": "14",
                 "Precio_x0020_Gasoleo_x0020_A": price,
+            }
+        ],
+    }
+
+
+def _payload_with_decoded_keys(price: str) -> dict:
+    return {
+        "Fecha": "25/03/2026 12:30",
+        "ListaEESSPrecio": [
+            {
+                "IDEESS": "54321",
+                "C.P.": "28001",
+                "Dirección": "Calle Alcala 1",
+                "Horario": "L-D: 24H",
+                "Latitud": "40,420000",
+                "Localidad": "Madrid",
+                "Longitud (WGS84)": "-3,690000",
+                "Margen": "D",
+                "Municipio": "Madrid",
+                "Provincia": "Madrid",
+                "Remisión": "dm",
+                "Rótulo": "Cepsa",
+                "Tipo Venta": "P",
+                "IDMunicipio": "79",
+                "IDProvincia": "28",
+                "IDCCAA": "13",
+                "Precio Gasoleo A": price,
             }
         ],
     }
@@ -87,3 +115,14 @@ async def test_sync_detects_price_drop_and_avoids_duplicates(session_factory) ->
         total_notifications = await session.scalar(select(func.count(NotificationSent.id)))
         assert total_notifications == 1
 
+
+async def test_sync_accepts_decoded_dataset_field_names(session_factory) -> None:
+    async with session_factory() as session:
+        service = SyncService(session=session, client=FakeClient([_payload_with_decoded_keys("1,499")]))
+        result = await service.run_sync()
+        assert result["stations_received"] == 1
+        assert result["price_rows_received"] == 1
+
+    async with session_factory() as session:
+        total_current_rows = await session.scalar(select(func.count()).select_from(StationPriceCurrent))
+        assert total_current_rows == 1
