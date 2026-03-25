@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  migrator:
+    build: .
+    env_file:
+      - .env
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  bot:
+    build: .
+    env_file:
+      - .env
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    command: ["python", "-m", "app.run_bot"]
+    restart: unless-stopped
+
+  worker:
+    build: .
+    env_file:
+      - .env
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    command: ["python", "-m", "app.run_worker"]
+    restart: unless-stopped
