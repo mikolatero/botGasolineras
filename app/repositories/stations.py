@@ -163,6 +163,7 @@ class StationsRepository(Repository):
     ) -> tuple[list[Station], int]:
         filters = [Station.is_active.is_(True)]
         distance_order_expr = None
+        matched_price_expr = None
         postal_code_filter = None
         radius_filter = None
         if postal_code:
@@ -213,6 +214,8 @@ class StationsRepository(Repository):
 
         base_stmt: Select = select(Station).where(and_(*filters))
         if fuel_id is not None:
+            matched_price_expr = StationPriceCurrent.current_price.label("matched_price")
+            base_stmt = base_stmt.add_columns(matched_price_expr)
             base_stmt = base_stmt.join(
                 StationPriceCurrent,
                 and_(
@@ -226,18 +229,31 @@ class StationsRepository(Repository):
         count_stmt = select(func.count()).select_from(count_subquery)
         total = int((await self.session.execute(count_stmt)).scalar_one())
 
-        stmt = (
-            base_stmt.order_by(
-                distance_order_expr.asc() if distance_order_expr is not None else Station.province.asc(),
+        order_by = []
+        if matched_price_expr is not None:
+            order_by.append(matched_price_expr.asc())
+        order_by.append(distance_order_expr.asc() if distance_order_expr is not None else Station.province.asc())
+        order_by.extend(
+            [
                 Station.municipality.asc(),
                 Station.brand.asc(),
                 Station.address.asc(),
-            )
+            ]
+        )
+        stmt = (
+            base_stmt.order_by(*order_by)
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
         result = await self.session.execute(stmt)
-        return list(result.scalars().unique().all()), total
+        if matched_price_expr is None:
+            return list(result.scalars().unique().all()), total
+
+        stations: list[Station] = []
+        for station, matched_price in result.all():
+            station.search_price = matched_price
+            stations.append(station)
+        return stations, total
 
     async def list_station_fuels(self, ideess: str) -> list[tuple[Fuel, StationPriceCurrent]]:
         stmt = (

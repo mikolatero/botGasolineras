@@ -68,7 +68,9 @@ def build_fuel_picker(prefix: str):
 def build_search_results(stations, page: int, total: int, page_size: int):
     builder = InlineKeyboardBuilder()
     for idx, station in enumerate(stations, start=1 + (page - 1) * page_size):
-        label = f"{idx}. {station.brand} | {station.municipality} | {station.address[:28]}"
+        price = getattr(station, "search_price", None)
+        price_text = f" | {format_compact_price(price)}" if price is not None else ""
+        label = f"{idx}. {station.brand} | {station.municipality}{price_text} | {station.address[:18]}"
         builder.row(
             InlineKeyboardButton(
                 text=label,

@@ -125,8 +125,11 @@ def _render_search_results_text(stations, page: int, total: int, page_size: int)
     total_pages = max(1, ceil(total / page_size))
     lines = [f"<b>Resultados</b> ({total}) - pagina {page}/{total_pages}"]
     for idx, station in enumerate(stations, start=1 + (page - 1) * page_size):
+        price = getattr(station, "search_price", None)
+        price_text = f" | {format_compact_price(price)}" if price is not None else ""
         lines.append(
-            f"{idx}. <b>{station.brand}</b> - {station.address}, {station.municipality} ({station.postal_code_display or 's/cp'})"
+            f"{idx}. <b>{station.brand}</b> - {station.address}, {station.municipality} "
+            f"({station.postal_code_display or 's/cp'}){price_text}"
         )
     return "\n".join(lines)
 
