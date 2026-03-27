@@ -20,6 +20,7 @@ from app.bot.keyboards import (
     build_watchlist_actions,
 )
 from app.bot.states import SearchStates
+from app.config.constants import FUEL_BY_ID
 from app.config.database import SessionLocal
 from app.config.settings import get_settings
 from app.integrations.postal_code_api import CartoCiudadPostalCodeClient
@@ -112,7 +113,11 @@ def _render_filter_summary(filters: dict[str, str | int | None]) -> str:
         if not value:
             continue
         label = FILTER_LABELS[key]
-        parts.append(f"• <b>{label}:</b> {value}")
+        display_value = value
+        if key == "fuel_id":
+            fuel = FUEL_BY_ID.get(int(value))
+            display_value = fuel["name"] if fuel is not None else value
+        parts.append(f"• <b>{label}:</b> {display_value}")
     body = "\n".join(parts) if parts else "• Sin filtros todavia"
     return (
         "<b>Buscador de gasolineras</b>\n"

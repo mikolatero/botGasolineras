@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 from app.bot.keyboards import build_search_results
-from app.bot.router import _render_search_results_text
+from app.bot.router import _render_filter_summary, _render_search_results_text
 from app.models.station import Station
 from app.models.station_price import StationPriceCurrent
 from app.repositories.stations import StationsRepository
@@ -217,3 +217,21 @@ def test_render_search_results_text_shows_price_when_available() -> None:
 
     assert "1. <b>MOEVE</b> - CARRETERA MU-611 KM. 3, Murcia (30001) | 1.409€/L" in text
     assert "2. <b>CAMPSA EXPRESS</b> - PG INDTL. OESTE S. GINES PARC., 29, Murcia (30002) | 1.379€/L" in text
+
+
+def test_render_filter_summary_shows_fuel_name_instead_of_id() -> None:
+    text = _render_filter_summary(
+        {
+            "postal_code": "30169",
+            "radius_km": 5,
+            "province": None,
+            "municipality": None,
+            "locality": None,
+            "brand": None,
+            "address_text": None,
+            "fuel_id": 1,
+        }
+    )
+
+    assert "• <b>Combustible:</b> Gasoleo A" in text
+    assert "• <b>Combustible:</b> 1" not in text
