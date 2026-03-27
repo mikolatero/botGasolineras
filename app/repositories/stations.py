@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from decimal import Decimal
 from math import cos, radians
 
 from sqlalchemy import Float, Select, and_, bindparam, cast, func, or_, select, update
@@ -67,6 +68,25 @@ class StationsRepository(Repository):
     async def get_by_ideess(self, ideess: str) -> Station | None:
         result = await self.session.execute(select(Station).where(Station.ideess == ideess))
         return result.scalar_one_or_none()
+
+    async def get_postal_code_centroid(self, postal_code: str) -> tuple[Decimal, Decimal] | None:
+        stmt = select(
+            func.avg(Station.latitude),
+            func.avg(Station.longitude),
+        ).where(
+            Station.is_active.is_(True),
+            Station.latitude.is_not(None),
+            Station.longitude.is_not(None),
+            or_(
+                Station.postal_code == postal_code,
+                Station.postal_code_resolved == postal_code,
+            ),
+        )
+        result = await self.session.execute(stmt)
+        latitude, longitude = result.one()
+        if latitude is None or longitude is None:
+            return None
+        return Decimal(str(latitude)), Decimal(str(longitude))
 
     async def list_pending_postal_code_resolution(self, *, limit: int) -> list[Station]:
         if limit <= 0:

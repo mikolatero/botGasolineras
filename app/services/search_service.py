@@ -67,6 +67,8 @@ class SearchService:
 
         coordinates = await self.postal_code_client.geocode_postal_code(postal_code)
         if coordinates is None:
+            coordinates = await self.stations_repository.get_postal_code_centroid(postal_code)
+        if coordinates is None:
             return None
 
         await self.postal_code_locations_repository.upsert(

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
@@ -13,6 +15,9 @@ from app.integrations.http_client import build_async_client_kwargs
 from app.utils.parsing import digits_only, parse_coordinate
 
 logger = logging.getLogger(__name__)
+
+
+_JSONP_RE = re.compile(r"^[^(]+\((.*)\)\s*;?\s*$", re.DOTALL)
 
 
 @dataclass(slots=True)
@@ -86,11 +91,11 @@ class CartoCiudadPostalCodeClient:
                 (self.candidates_url, {"q": normalized_postal_code, "limit": 1}),
             ):
                 try:
-                    response = await client.get(url, params=params, headers={"Accept": "application/json"})
+                    response = await client.get(url, params=params)
                     if response.status_code == httpx.codes.NO_CONTENT:
                         continue
                     response.raise_for_status()
-                    coordinates = self._extract_coordinates(response.json())
+                    coordinates = self._extract_coordinates(self._parse_json_or_jsonp(response))
                     if coordinates is not None:
                         return coordinates
                 except (httpx.HTTPError, ValueError) as exc:
@@ -124,6 +129,16 @@ class CartoCiudadPostalCodeClient:
             if value is not None:
                 return parse_coordinate(str(value))
         return None
+
+    @staticmethod
+    def _parse_json_or_jsonp(response: httpx.Response) -> object:
+        try:
+            return response.json()
+        except ValueError:
+            match = _JSONP_RE.match(response.text.strip())
+            if match is None:
+                raise
+            return json.loads(match.group(1))
 
 
 _LATITUDE_KEYS = ("lat", "latitude", "latitud", "y", "LATITUD_WGS84_4326")

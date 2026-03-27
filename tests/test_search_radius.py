@@ -136,3 +136,65 @@ async def test_search_radius_falls_back_to_exact_postal_code_when_cp_cannot_be_g
         assert total == 1
         assert len(stations) == 1
         assert stations[0].ideess == "400"
+
+
+async def test_search_radius_uses_local_centroid_when_external_geocoder_fails(session_factory) -> None:
+    async with session_factory() as session:
+        session.add_all(
+            [
+                Station(
+                    ideess="500",
+                    postal_code="30169",
+                    address="Origen 1",
+                    address_normalized="origen 1",
+                    locality="Murcia",
+                    locality_normalized="murcia",
+                    municipality="Murcia",
+                    municipality_normalized="murcia",
+                    province="Murcia",
+                    province_normalized="murcia",
+                    brand="Marca E",
+                    brand_normalized="marca e",
+                    latitude=Decimal("37.9900000"),
+                    longitude=Decimal("-1.1800000"),
+                    is_active=True,
+                ),
+                Station(
+                    ideess="600",
+                    postal_code="30820",
+                    address="Vecina 2",
+                    address_normalized="vecina 2",
+                    locality="Alcantarilla",
+                    locality_normalized="alcantarilla",
+                    municipality="Alcantarilla",
+                    municipality_normalized="alcantarilla",
+                    province="Murcia",
+                    province_normalized="murcia",
+                    brand="Marca F",
+                    brand_normalized="marca f",
+                    latitude=Decimal("38.0000000"),
+                    longitude=Decimal("-1.1800000"),
+                    is_active=True,
+                ),
+            ]
+        )
+        await session.commit()
+
+    async with session_factory() as session:
+        service = SearchService(
+            StationsRepository(session),
+            PostalCodeLocationsRepository(session),
+            FakePostalCodeGeoClient({"30169": None}),
+        )
+        stations, total = await service.search(
+            SearchFilters(postal_code="30169", radius_km=2),
+            page=1,
+            page_size=10,
+        )
+        await session.commit()
+
+        assert total == 2
+        assert [station.ideess for station in stations] == ["500", "600"]
+
+        cached = await session.get(PostalCodeLocation, "30169")
+        assert cached is not None

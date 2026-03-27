@@ -8,6 +8,7 @@ import httpx
 import pytest
 
 from app.integrations.fuel_api import MineturApiClient
+from app.integrations.postal_code_api import CartoCiudadPostalCodeClient
 from app.scheduler.runner import WorkerRunner
 
 
@@ -58,6 +59,18 @@ async def test_fuel_api_reports_error_type_when_connect_error_has_no_message(mon
 
     with pytest.raises(RuntimeError, match="ConnectError: no error message provided"):
         await client.fetch_dataset()
+
+
+def test_postal_code_api_parses_jsonp_payload() -> None:
+    response = httpx.Response(
+        200,
+        text='callback({"lat":"37.9800000","lon":"-1.1200000"})',
+        request=httpx.Request("GET", "https://example.com"),
+    )
+
+    payload = CartoCiudadPostalCodeClient._parse_json_or_jsonp(response)
+
+    assert payload == {"lat": "37.9800000", "lon": "-1.1200000"}
 
 
 @pytest.mark.asyncio
