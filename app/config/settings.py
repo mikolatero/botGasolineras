@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     telegram_bot_token: str = Field(..., alias="TELEGRAM_BOT_TOKEN")
     database_url: str = Field(..., alias="DATABASE_URL")
     minetur_api_url: str = Field(
-        "https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres",
+        "https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/",
         alias="MINETUR_API_URL",
     )
     minetur_api_timeout_seconds: int = Field(30, alias="MINETUR_API_TIMEOUT_SECONDS")

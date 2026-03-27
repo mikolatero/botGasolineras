@@ -25,7 +25,7 @@ Las busquedas del bot nunca van a la API oficial. Siempre usan la base local, po
 
 Fuente oficial:
 
-- Endpoint: [EstacionesTerrestres](https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres)
+- Endpoint: [EstacionesTerrestres](https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/)
 - Referencia oficial del contrato JSON: [help/operations/PreciosEESSTerrestres](https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/help/operations/PreciosEESSTerrestres)
 
 Estructura raiz observada en la documentacion oficial:
