@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from decimal import Decimal
+from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
@@ -11,6 +14,7 @@ from app.models.user import User
 from app.models.watchlist import UserWatchlist
 from app.repositories.watchlists import WatchlistsRepository
 from app.services.sync_service import SyncService
+from app.utils.formatting import format_notification_message
 
 
 class FakeClient:
@@ -126,3 +130,31 @@ async def test_sync_accepts_decoded_dataset_field_names(session_factory) -> None
     async with session_factory() as session:
         total_current_rows = await session.scalar(select(func.count()).select_from(StationPriceCurrent))
         assert total_current_rows == 1
+
+
+def test_format_notification_message_keeps_naive_dataset_timestamp_as_madrid_time() -> None:
+    notification = SimpleNamespace(
+        station=SimpleNamespace(brand="SERMUCO", address="POLIGONO LOS PRADOS, 6", municipality="Cieza"),
+        fuel=SimpleNamespace(name="Gasoleo A"),
+        previous_price=Decimal("1.689"),
+        new_price=Decimal("1.649"),
+        dataset_timestamp=datetime(2026, 3, 27, 12, 54),
+    )
+
+    text = format_notification_message(notification)
+
+    assert "27/03/2026 12:54" in text
+
+
+def test_format_notification_message_converts_aware_dataset_timestamp_to_madrid_time() -> None:
+    notification = SimpleNamespace(
+        station=SimpleNamespace(brand="SERMUCO", address="POLIGONO LOS PRADOS, 6", municipality="Cieza"),
+        fuel=SimpleNamespace(name="Gasoleo A"),
+        previous_price=Decimal("1.689"),
+        new_price=Decimal("1.649"),
+        dataset_timestamp=datetime(2026, 3, 27, 11, 54, tzinfo=timezone.utc),
+    )
+
+    text = format_notification_message(notification)
+
+    assert "27/03/2026 12:54" in text
