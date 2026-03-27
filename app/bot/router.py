@@ -22,7 +22,9 @@ from app.bot.keyboards import (
 from app.bot.states import SearchStates
 from app.config.database import SessionLocal
 from app.config.settings import get_settings
+from app.integrations.postal_code_api import CartoCiudadPostalCodeClient
 from app.repositories.fuels import FuelsRepository
+from app.repositories.postal_code_locations import PostalCodeLocationsRepository
 from app.repositories.station_prices import StationPricesRepository
 from app.repositories.stations import StationsRepository
 from app.repositories.users import UsersRepository
@@ -51,6 +53,7 @@ HELP_TEXT = (
 def _filters_from_state(data: dict) -> SearchFilters:
     return SearchFilters(
         postal_code=data.get("postal_code"),
+        radius_km=data.get("radius_km"),
         province=data.get("province"),
         municipality=data.get("municipality"),
         locality=data.get("locality"),
@@ -115,6 +118,7 @@ async def _show_search_menu(target: Message | CallbackQuery, state: FSMContext) 
     data = await state.get_data()
     filters = {
         "postal_code": data.get("postal_code"),
+        "radius_km": data.get("radius_km"),
         "province": data.get("province"),
         "municipality": data.get("municipality"),
         "locality": data.get("locality"),
@@ -135,9 +139,21 @@ async def _run_search(callback: CallbackQuery, state: FSMContext, page: int) -> 
     settings = get_settings()
     data = await state.get_data()
     filters = _filters_from_state(data)
+    if filters.radius_km and not filters.postal_code:
+        await callback.message.edit_text(
+            "El filtro de radio requiere que indiques tambien un codigo postal.",
+            reply_markup=build_search_menu(filters.as_dict()),
+        )
+        await callback.answer()
+        return
     async with SessionLocal() as session:
-        service = SearchService(StationsRepository(session))
+        service = SearchService(
+            StationsRepository(session),
+            PostalCodeLocationsRepository(session),
+            CartoCiudadPostalCodeClient(settings),
+        )
         stations, total = await service.search(filters, page=page, page_size=settings.search_result_page_size)
+        await session.commit()
     if not stations:
         await callback.message.edit_text("No he encontrado gasolineras con esos filtros. Ajusta la busqueda.", reply_markup=build_search_menu(filters.as_dict()))
         await callback.answer()
@@ -244,6 +260,15 @@ async def search_value_handler(message: Message, state: FSMContext) -> None:
         if len(value) not in {5}:
             await message.answer("El codigo postal debe tener 5 digitos.")
             return
+    if field == "radius_km":
+        if not value.isdigit():
+            await message.answer("El radio debe ser un numero entero de kilometros.")
+            return
+        radius_km = int(value)
+        if radius_km < 1 or radius_km > 50:
+            await message.answer("El radio debe estar entre 1 y 50 km.")
+            return
+        value = radius_km
     await state.update_data({field: value, "editing_field": None})
     await state.set_state(None)
     await _show_search_menu(message, state)

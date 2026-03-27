@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from math import cos, radians
 
-from sqlalchemy import Select, and_, bindparam, func, or_, select, update
+from sqlalchemy import Float, Select, and_, bindparam, cast, func, or_, select, update
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -128,6 +129,9 @@ class StationsRepository(Repository):
         self,
         *,
         postal_code: str | None = None,
+        radius_center_latitude: float | None = None,
+        radius_center_longitude: float | None = None,
+        radius_km: int | None = None,
         province: str | None = None,
         municipality: str | None = None,
         locality: str | None = None,
@@ -138,13 +142,36 @@ class StationsRepository(Repository):
         page_size: int = 5,
     ) -> tuple[list[Station], int]:
         filters = [Station.is_active.is_(True)]
+        distance_order_expr = None
+        postal_code_filter = None
+        radius_filter = None
         if postal_code:
-            filters.append(
-                or_(
-                    Station.postal_code_resolved == postal_code,
-                    Station.postal_code == postal_code,
-                )
+            postal_code_filter = or_(
+                Station.postal_code_resolved == postal_code,
+                Station.postal_code == postal_code,
             )
+        if (
+            radius_km is not None
+            and radius_km > 0
+            and radius_center_latitude is not None
+            and radius_center_longitude is not None
+        ):
+            latitude_scale = 111.32
+            longitude_scale = 111.32 * max(cos(radians(radius_center_latitude)), 0.01)
+            latitude_diff_km = (cast(Station.latitude, Float) - radius_center_latitude) * latitude_scale
+            longitude_diff_km = (cast(Station.longitude, Float) - radius_center_longitude) * longitude_scale
+            distance_order_expr = (latitude_diff_km * latitude_diff_km) + (longitude_diff_km * longitude_diff_km)
+            radius_filter = and_(
+                Station.latitude.is_not(None),
+                Station.longitude.is_not(None),
+                distance_order_expr <= float(radius_km * radius_km),
+            )
+        if postal_code_filter is not None and radius_filter is not None:
+            filters.append(or_(postal_code_filter, radius_filter))
+        elif postal_code_filter is not None:
+            filters.append(postal_code_filter)
+        elif radius_filter is not None:
+            filters.append(radius_filter)
         if province:
             filters.append(Station.province_normalized.like(f"{normalize_text(province)}%"))
         if municipality:
@@ -180,7 +207,12 @@ class StationsRepository(Repository):
         total = int((await self.session.execute(count_stmt)).scalar_one())
 
         stmt = (
-            base_stmt.order_by(Station.province.asc(), Station.municipality.asc(), Station.brand.asc(), Station.address.asc())
+            base_stmt.order_by(
+                distance_order_expr.asc() if distance_order_expr is not None else Station.province.asc(),
+                Station.municipality.asc(),
+                Station.brand.asc(),
+                Station.address.asc(),
+            )
             .offset((page - 1) * page_size)
             .limit(page_size)
         )

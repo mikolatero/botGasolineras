@@ -34,6 +34,7 @@ class WatchlistCallback(CallbackData, prefix="watchlist"):
 
 FILTER_LABELS = {
     "postal_code": "CP",
+    "radius_km": "Radio km",
     "province": "Provincia",
     "municipality": "Municipio",
     "locality": "Localidad",
@@ -49,7 +50,7 @@ def build_search_menu(filters: dict[str, str | int | None]):
         builder.button(text=label, callback_data=SearchMenuCallback(action="set", value=field).pack())
     builder.button(text="Buscar ahora", callback_data=SearchMenuCallback(action="run", value="0").pack())
     builder.button(text="Limpiar filtros", callback_data=SearchMenuCallback(action="clear", value="0").pack())
-    builder.adjust(2, 2, 2, 1)
+    builder.adjust(2, 2, 2, 2, 2)
     return builder.as_markup()
 
 

@@ -10,7 +10,7 @@ import httpx
 
 from app.config.settings import Settings
 from app.integrations.http_client import build_async_client_kwargs
-from app.utils.parsing import digits_only
+from app.utils.parsing import digits_only, parse_coordinate
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,8 @@ class CartoCiudadPostalCodeClient:
         self.settings = settings
         self.enabled = settings.postal_code_geocoder_enabled
         self.url = settings.postal_code_geocoder_url
+        self.find_url = f"{self.url.rsplit('/', 1)[0]}/findJsonp"
+        self.candidates_url = f"{self.url.rsplit('/', 1)[0]}/candidatesJsonp"
         self.timeout_seconds = settings.postal_code_geocoder_timeout_seconds
         self.batch_size = max(settings.postal_code_geocoder_batch_size, 0)
         self.concurrency = max(settings.postal_code_geocoder_concurrency, 1)
@@ -67,3 +69,62 @@ class CartoCiudadPostalCodeClient:
 
             pairs = await asyncio.gather(*(resolve_one(*station) for station in stations))
         return dict(pairs)
+
+    async def geocode_postal_code(self, postal_code: str) -> tuple[Decimal, Decimal] | None:
+        if not self.enabled:
+            return None
+
+        normalized_postal_code = digits_only(postal_code)
+        if normalized_postal_code is None:
+            return None
+
+        timeout = httpx.Timeout(self.timeout_seconds)
+        client_kwargs = build_async_client_kwargs(self.settings, timeout=timeout, follow_redirects=True)
+        async with httpx.AsyncClient(**client_kwargs) as client:
+            for url, params in (
+                (self.find_url, {"q": normalized_postal_code}),
+                (self.candidates_url, {"q": normalized_postal_code, "limit": 1}),
+            ):
+                try:
+                    response = await client.get(url, params=params, headers={"Accept": "application/json"})
+                    if response.status_code == httpx.codes.NO_CONTENT:
+                        continue
+                    response.raise_for_status()
+                    coordinates = self._extract_coordinates(response.json())
+                    if coordinates is not None:
+                        return coordinates
+                except (httpx.HTTPError, ValueError) as exc:
+                    logger.warning("Postal code geocoding failed for %s via %s: %s", normalized_postal_code, url, exc)
+        return None
+
+    @classmethod
+    def _extract_coordinates(cls, payload: object) -> tuple[Decimal, Decimal] | None:
+        if isinstance(payload, dict):
+            latitude = cls._extract_coordinate_value(payload, _LATITUDE_KEYS)
+            longitude = cls._extract_coordinate_value(payload, _LONGITUDE_KEYS)
+            if latitude is not None and longitude is not None:
+                return latitude, longitude
+            for value in payload.values():
+                coordinates = cls._extract_coordinates(value)
+                if coordinates is not None:
+                    return coordinates
+            return None
+        if isinstance(payload, list):
+            for item in payload:
+                coordinates = cls._extract_coordinates(item)
+                if coordinates is not None:
+                    return coordinates
+        return None
+
+    @staticmethod
+    def _extract_coordinate_value(payload: dict[str, object], keys: tuple[str, ...]) -> Decimal | None:
+        lowered = {key.casefold(): value for key, value in payload.items()}
+        for key in keys:
+            value = lowered.get(key.casefold())
+            if value is not None:
+                return parse_coordinate(str(value))
+        return None
+
+
+_LATITUDE_KEYS = ("lat", "latitude", "latitud", "y", "LATITUD_WGS84_4326")
+_LONGITUDE_KEYS = ("lon", "lng", "longitude", "longitud", "x", "LONGITUD_WGS84_4326")
