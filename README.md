@@ -131,7 +131,7 @@ El repositorio ya contiene codigo real y ejecutable para:
 - upserts y persistencia en MySQL
 - deteccion de bajadas
 - cola idempotente de notificaciones
-- bot `aiogram` con `/start`, `/help`, `/anadir`, `/buscar`, `/mis_seguimientos`, `/eliminar`, `/pausar`, `/reanudar`
+- bot `aiogram` con `/start`, `/help`, `/buscar`, `/mis_seguimientos`, `/eliminar`, `/pausar`, `/reanudar`
 - filtros por CP, provincia, municipio, localidad, marca, direccion y combustible
 - paginacion e inline keyboards
 - scheduler con `APScheduler`

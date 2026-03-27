@@ -44,7 +44,7 @@ HELP_TEXT = (
     "Este bot te avisa cuando baja el precio del combustible en las gasolineras que sigues.\n"
     "No tienes que revisar precios a mano: eliges una gasolinera, eliges un combustible y el bot te notifica cuando detecta una bajada.\n\n"
     "<b>Como empezar</b>\n"
-    "1. Usa <b>/buscar</b> o <b>/anadir</b>.\n"
+    "1. Usa <b>/buscar</b>.\n"
     "2. Pon uno o varios filtros en el buscador.\n"
     "3. Pulsa <b>Buscar ahora</b>.\n"
     "4. Elige una gasolinera de la lista.\n"
@@ -61,11 +61,8 @@ HELP_TEXT = (
     "• <b>Direccion</b>: util si recuerdas una calle, avenida, carretera o parte de la direccion.\n"
     "• <b>Combustible</b>: filtra resultados para que luego sea mas facil elegir.\n\n"
     "Cuando termines de ajustar filtros, pulsa <b>Buscar ahora</b>. Si quieres empezar desde cero, pulsa <b>Limpiar filtros</b>.\n\n"
-    "<b>Buscar o anadir</b>\n"
-    "<b>/buscar</b> y <b>/anadir</b> abren el mismo buscador.\n"
-    "La diferencia practica es esta:\n"
-    "• usa <b>/buscar</b> si solo quieres mirar opciones\n"
-    "• usa <b>/anadir</b> si ya vas con la idea de crear un seguimiento\n\n"
+    "<b>Buscar</b>\n"
+    "<b>/buscar</b> abre el buscador para localizar gasolineras y crear seguimientos.\n\n"
     "<b>Que es un seguimiento</b>\n"
     "Un seguimiento es la combinacion de una gasolinera y un combustible.\n"
     "Ejemplo: puedes seguir Gasoleo A en una estacion concreta y tambien Gasolina 95 en esa misma estacion como seguimientos distintos.\n\n"
@@ -86,7 +83,6 @@ HELP_TEXT = (
     "/start - registrar usuario y mostrar ayuda corta\n"
     "/help - abrir este manual\n"
     "/buscar - abrir el buscador\n"
-    "/anadir - abrir el buscador para crear un seguimiento\n"
     "/mis_seguimientos - ver tus seguimientos\n"
     "/pausar - abrir el gestor para pausar seguimientos\n"
     "/reanudar - abrir el gestor para reanudar seguimientos\n"
@@ -240,7 +236,7 @@ async def start_handler(message: Message, state: FSMContext) -> None:
     await state.clear()
     await message.answer(
         "Bot publico para seguir bajadas de precio en gasolineras de Espana.\n"
-        "Usa /buscar o /anadir para empezar.\n\n"
+        "Usa /buscar para empezar.\n\n"
         f"{HELP_TEXT}"
     )
 
@@ -252,7 +248,6 @@ async def help_handler(message: Message) -> None:
 
 
 @router.message(Command("buscar"))
-@router.message(Command("anadir"))
 async def search_entry_handler(message: Message, state: FSMContext) -> None:
     await _ensure_user(message)
     await state.clear()
