@@ -38,7 +38,8 @@ class WorkerRunner:
         )
         self.scheduler.start()
         if self.settings.run_sync_on_startup:
-            asyncio.create_task(self.run_cycle())
+            task = asyncio.create_task(self.run_cycle())
+            task.add_done_callback(self._log_startup_task_result)
 
     async def stop(self) -> None:
         self.scheduler.shutdown(wait=False)
@@ -65,3 +66,10 @@ class WorkerRunner:
                 delivered = await notification_service.dispatch_pending(limit=200)
                 await session.commit()
                 logger.info("Worker cycle completed, delivered=%s", delivered)
+
+    @staticmethod
+    def _log_startup_task_result(task: asyncio.Task) -> None:
+        try:
+            task.result()
+        except Exception:
+            logger.exception("Initial startup sync failed")

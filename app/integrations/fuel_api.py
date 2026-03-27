@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 from typing import Any
 
 import httpx
@@ -30,8 +31,20 @@ class MineturApiClient:
                     return payload
                 except (httpx.HTTPError, ValueError) as exc:
                     last_error = exc
-                    logger.warning("Dataset fetch failed on attempt %s/%s: %s", attempt, self.settings.minetur_api_retries, exc)
+                    logger.warning(
+                        "Dataset fetch failed on attempt %s/%s (%s): %s",
+                        attempt,
+                        self.settings.minetur_api_retries,
+                        exc.__class__.__name__,
+                        str(exc) or "no error message provided",
+                    )
                     if attempt < self.settings.minetur_api_retries:
-                        await asyncio.sleep(min(2**attempt, 10))
-            raise RuntimeError(f"Unable to fetch official dataset: {last_error}") from last_error
+                        await asyncio.sleep(self._retry_delay_seconds(attempt))
+            error_summary = "unknown error" if last_error is None else f"{last_error.__class__.__name__}: {str(last_error) or 'no error message provided'}"
+            raise RuntimeError(f"Unable to fetch official dataset: {error_summary}") from last_error
 
+    @staticmethod
+    def _retry_delay_seconds(attempt: int) -> float:
+        base_delay = min(2**attempt, 30)
+        jitter = random.uniform(0, 0.5)
+        return base_delay + jitter
