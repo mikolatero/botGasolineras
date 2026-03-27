@@ -206,6 +206,8 @@ Variables principales:
 - `RATE_LIMIT_WINDOW_SECONDS`
 - `RATE_LIMIT_MAX_EVENTS`
 - `TIMEZONE`
+- `OUTBOUND_HTTP_TRUST_ENV` (por defecto `false`)
+- `OUTBOUND_HTTP_CA_BUNDLE` (en Docker se fija a `/etc/ssl/certs/ca-certificates.crt`)
 
 ## 8. Scheduler
 

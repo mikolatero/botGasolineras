@@ -12,6 +12,8 @@ class Settings(BaseSettings):
 
     app_env: Literal["development", "staging", "production"] = "development"
     log_level: str = "INFO"
+    outbound_http_trust_env: bool = Field(False, alias="OUTBOUND_HTTP_TRUST_ENV")
+    outbound_http_ca_bundle: str | None = Field(None, alias="OUTBOUND_HTTP_CA_BUNDLE")
     telegram_bot_token: str = Field(..., alias="TELEGRAM_BOT_TOKEN")
     database_url: str = Field(..., alias="DATABASE_URL")
     minetur_api_url: str = Field(

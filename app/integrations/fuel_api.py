@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 
 from app.config.settings import Settings
+from app.integrations.http_client import build_async_client_kwargs, summarize_exception_chain
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,8 @@ class MineturApiClient:
     async def fetch_dataset(self) -> dict[str, Any]:
         headers = {"Accept": "text/json"}
         timeout = httpx.Timeout(self.settings.minetur_api_timeout_seconds)
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        client_kwargs = build_async_client_kwargs(self.settings, timeout=timeout, follow_redirects=True)
+        async with httpx.AsyncClient(**client_kwargs) as client:
             last_error: Exception | None = None
             for attempt in range(1, self.settings.minetur_api_retries + 1):
                 try:
@@ -31,16 +33,17 @@ class MineturApiClient:
                     return payload
                 except (httpx.HTTPError, ValueError) as exc:
                     last_error = exc
+                    error_summary = summarize_exception_chain(exc)
                     logger.warning(
-                        "Dataset fetch failed on attempt %s/%s (%s): %s",
+                        "Dataset fetch failed on attempt %s/%s for %s: %s",
                         attempt,
                         self.settings.minetur_api_retries,
-                        exc.__class__.__name__,
-                        str(exc) or "no error message provided",
+                        self.settings.minetur_api_url,
+                        error_summary,
                     )
                     if attempt < self.settings.minetur_api_retries:
                         await asyncio.sleep(self._retry_delay_seconds(attempt))
-            error_summary = "unknown error" if last_error is None else f"{last_error.__class__.__name__}: {str(last_error) or 'no error message provided'}"
+            error_summary = "unknown error" if last_error is None else summarize_exception_chain(last_error)
             raise RuntimeError(f"Unable to fetch official dataset: {error_summary}") from last_error
 
     @staticmethod

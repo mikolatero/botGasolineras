@@ -9,6 +9,7 @@ from decimal import Decimal
 import httpx
 
 from app.config.settings import Settings
+from app.integrations.http_client import build_async_client_kwargs
 from app.utils.parsing import digits_only
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ class PostalCodeResolution:
 
 class CartoCiudadPostalCodeClient:
     def __init__(self, settings: Settings) -> None:
+        self.settings = settings
         self.enabled = settings.postal_code_geocoder_enabled
         self.url = settings.postal_code_geocoder_url
         self.timeout_seconds = settings.postal_code_geocoder_timeout_seconds
@@ -38,7 +40,8 @@ class CartoCiudadPostalCodeClient:
         timeout = httpx.Timeout(self.timeout_seconds)
         semaphore = asyncio.Semaphore(self.concurrency)
 
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        client_kwargs = build_async_client_kwargs(self.settings, timeout=timeout, follow_redirects=True)
+        async with httpx.AsyncClient(**client_kwargs) as client:
 
             async def resolve_one(station_id: str, latitude: Decimal, longitude: Decimal) -> tuple[str, PostalCodeResolution]:
                 async with semaphore:
