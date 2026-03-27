@@ -10,3 +10,10 @@ test.db
 dist/
 build/
 *.egg-info/
+.DS_Store
+.idea/
+.vscode/
+*.log
+coverage/
+htmlcov/
+*.cover

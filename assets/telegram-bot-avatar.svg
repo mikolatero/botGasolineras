@@ -1,0 +1,62 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(740 250) rotate(132.445) scale(780 780)">
+      <stop stop-color="#1F6A7A"/>
+      <stop offset="0.45" stop-color="#123948"/>
+      <stop offset="1" stop-color="#09161F"/>
+    </radialGradient>
+    <linearGradient id="accentWarm" x1="210" y1="178" x2="522" y2="390" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB347"/>
+      <stop offset="1" stop-color="#F25F3A"/>
+    </linearGradient>
+    <linearGradient id="accentDrop" x1="332" y1="741" x2="748" y2="741" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5EE8A2"/>
+      <stop offset="1" stop-color="#1BC77A"/>
+    </linearGradient>
+    <filter id="shadowSoft" x="125" y="131" width="774" height="774" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="22"/>
+      <feGaussianBlur stdDeviation="24"/>
+      <feComposite in2="hardAlpha" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.0196078 0 0 0 0 0.0745098 0 0 0 0 0.101961 0 0 0 0.28 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_1"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_1" result="shape"/>
+    </filter>
+  </defs>
+
+  <circle cx="512" cy="512" r="480" fill="url(#bgGlow)"/>
+  <circle cx="512" cy="512" r="462" stroke="#D7F0F4" stroke-opacity="0.14" stroke-width="8"/>
+  <circle cx="512" cy="512" r="426" stroke="#D7F0F4" stroke-opacity="0.08" stroke-width="2"/>
+
+  <path d="M202 252C269 186 370 156 467 174C513 182 556 203 591 236L531 297C484 255 416 237 354 249C309 257 267 279 236 312L202 252Z" fill="url(#accentWarm)" opacity="0.95"/>
+  <path d="M228 190C300 143 391 124 477 137C563 150 641 195 695 262L651 291C604 233 538 194 463 184C388 174 309 193 246 240L228 190Z" fill="#FFE082" opacity="0.82"/>
+
+  <g opacity="0.12">
+    <path d="M286 690C361 635 451 607 558 607C638 607 711 626 778 663" stroke="#A7DDE6" stroke-width="20" stroke-linecap="round"/>
+    <path d="M252 744C333 698 421 675 516 675C606 675 693 697 776 742" stroke="#A7DDE6" stroke-width="10" stroke-linecap="round"/>
+  </g>
+
+  <g filter="url(#shadowSoft)">
+    <path d="M512 222C401.543 222 312 311.543 312 422C312 578.819 491.534 769.174 507.047 785.294C509.694 788.045 514.306 788.045 516.953 785.294C532.466 769.174 712 578.819 712 422C712 311.543 622.457 222 512 222Z" fill="#F4FBFC"/>
+    <circle cx="512" cy="422" r="138" fill="#123948"/>
+
+    <rect x="446" y="322" width="114" height="194" rx="22" fill="#F4FBFC"/>
+    <rect x="467" y="346" width="72" height="54" rx="12" fill="#123948"/>
+    <rect x="470" y="423" width="66" height="19" rx="9.5" fill="#D5EDEF"/>
+    <rect x="470" y="454" width="48" height="19" rx="9.5" fill="#D5EDEF"/>
+    <rect x="440" y="516" width="128" height="22" rx="11" fill="#F4FBFC"/>
+    <path d="M564 350C608 350 642 384 642 428V496C642 506.493 633.493 515 623 515H614C603.507 515 595 506.493 595 496V428C595 410.327 581.673 396 564 396V350Z" fill="#F4FBFC"/>
+    <path d="M618 512C618 540.719 594.719 564 566 564H555V532H566C577.046 532 586 523.046 586 512H618Z" fill="#F4FBFC"/>
+    <path d="M495.598 373.983C500.726 364.302 514.603 364.302 519.731 373.983L529.293 392.03C534.099 401.101 527.522 412 517.269 412H498.06C487.807 412 481.23 401.101 486.036 392.03L495.598 373.983Z" fill="#FFB347"/>
+    <path d="M508.2 376L499 394.6H507.2V408L525 387.2H514.8L522.6 376H508.2Z" fill="#123948"/>
+  </g>
+
+  <path d="M344 620L428 704L494 638L736 880" stroke="url(#accentDrop)" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M650 794L736 880" stroke="url(#accentDrop)" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M736 788V880" stroke="url(#accentDrop)" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <circle cx="746" cy="322" r="58" fill="#0E2A37" stroke="#F4FBFC" stroke-opacity="0.22" stroke-width="8"/>
+  <path d="M724 322C724 309.85 733.85 300 746 300C758.15 300 768 309.85 768 322C768 334.15 758.15 344 746 344H734L724 354V322Z" fill="#FFE082"/>
+  <circle cx="746" cy="322" r="9" fill="#0E2A37"/>
+</svg>
