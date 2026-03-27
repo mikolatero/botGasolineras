@@ -10,6 +10,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from app.config.database import SessionLocal
 from app.config.settings import get_settings
 from app.integrations.fuel_api import MineturApiClient
+from app.integrations.postal_code_api import CartoCiudadPostalCodeClient
 from app.repositories.notifications import NotificationsRepository
 from app.repositories.watchlists import WatchlistsRepository
 from app.services.notification_service import NotificationService
@@ -50,7 +51,11 @@ class WorkerRunner:
 
         async with self._lock:
             async with SessionLocal() as session:
-                sync_service = SyncService(session=session, client=MineturApiClient(self.settings))
+                sync_service = SyncService(
+                    session=session,
+                    client=MineturApiClient(self.settings),
+                    postal_code_client=CartoCiudadPostalCodeClient(self.settings),
+                )
                 notification_service = NotificationService(
                     bot=self.bot,
                     notifications_repository=NotificationsRepository(session),
@@ -60,4 +65,3 @@ class WorkerRunner:
                 delivered = await notification_service.dispatch_pending(limit=200)
                 await session.commit()
                 logger.info("Worker cycle completed, delivered=%s", delivered)
-

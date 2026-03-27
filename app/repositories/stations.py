@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from sqlalchemy import Select, and_, func, or_, select
+from sqlalchemy import Select, and_, bindparam, func, or_, select, update
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -67,6 +67,46 @@ class StationsRepository(Repository):
         result = await self.session.execute(select(Station).where(Station.ideess == ideess))
         return result.scalar_one_or_none()
 
+    async def list_pending_postal_code_resolution(self, *, limit: int) -> list[Station]:
+        if limit <= 0:
+            return []
+        stmt = (
+            select(Station)
+            .where(
+                Station.is_active.is_(True),
+                Station.latitude.is_not(None),
+                Station.longitude.is_not(None),
+                Station.postal_code_checked_at.is_(None),
+            )
+            .order_by(Station.ideess.asc())
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def update_postal_code_resolutions(self, payloads: list[dict]) -> None:
+        if not payloads:
+            return
+        statement = (
+            update(Station.__table__)
+            .where(Station.__table__.c.ideess == bindparam("station_ideess"))
+            .values(
+                postal_code_resolved=bindparam("postal_code_resolved"),
+                postal_code_checked_at=bindparam("postal_code_checked_at"),
+            )
+        )
+        await self.session.execute(
+            statement,
+            [
+                {
+                    "station_ideess": payload["ideess"],
+                    "postal_code_resolved": payload["postal_code_resolved"],
+                    "postal_code_checked_at": payload["postal_code_checked_at"],
+                }
+                for payload in payloads
+            ],
+        )
+
     async def search(
         self,
         *,
@@ -82,7 +122,12 @@ class StationsRepository(Repository):
     ) -> tuple[list[Station], int]:
         filters = [Station.is_active.is_(True)]
         if postal_code:
-            filters.append(Station.postal_code == postal_code)
+            filters.append(
+                or_(
+                    Station.postal_code_resolved == postal_code,
+                    and_(Station.postal_code_resolved.is_(None), Station.postal_code == postal_code),
+                )
+            )
         if province:
             filters.append(Station.province_normalized.like(f"{normalize_text(province)}%"))
         if municipality:

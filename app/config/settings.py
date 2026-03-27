@@ -20,6 +20,14 @@ class Settings(BaseSettings):
     )
     minetur_api_timeout_seconds: int = Field(30, alias="MINETUR_API_TIMEOUT_SECONDS")
     minetur_api_retries: int = Field(3, alias="MINETUR_API_RETRIES")
+    postal_code_geocoder_enabled: bool = Field(True, alias="POSTAL_CODE_GEOCODER_ENABLED")
+    postal_code_geocoder_url: str = Field(
+        "https://www.cartociudad.es/geocoder/api/geocoder/reverseGeocode",
+        alias="POSTAL_CODE_GEOCODER_URL",
+    )
+    postal_code_geocoder_timeout_seconds: int = Field(5, alias="POSTAL_CODE_GEOCODER_TIMEOUT_SECONDS")
+    postal_code_geocoder_batch_size: int = Field(250, alias="POSTAL_CODE_GEOCODER_BATCH_SIZE")
+    postal_code_geocoder_concurrency: int = Field(5, alias="POSTAL_CODE_GEOCODER_CONCURRENCY")
     sync_interval_minutes: int = Field(30, alias="SYNC_INTERVAL_MINUTES")
     run_sync_on_startup: bool = Field(True, alias="RUN_SYNC_ON_STARTUP")
     search_result_page_size: int = Field(5, alias="SEARCH_RESULT_PAGE_SIZE")
@@ -41,4 +49,3 @@ class Settings(BaseSettings):
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()
-

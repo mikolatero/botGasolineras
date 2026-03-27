@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Index, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, Index, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -12,6 +13,7 @@ class Station(Base, TimestampMixin):
     __tablename__ = "stations"
     __table_args__ = (
         Index("ix_stations_postal_code", "postal_code"),
+        Index("ix_stations_postal_code_resolved", "postal_code_resolved"),
         Index("ix_stations_municipality", "municipality_normalized"),
         Index("ix_stations_province", "province_normalized"),
         Index("ix_stations_brand", "brand_normalized"),
@@ -29,6 +31,8 @@ class Station(Base, TimestampMixin):
 
     ideess: Mapped[str] = mapped_column(String(16), primary_key=True)
     postal_code: Mapped[str | None] = mapped_column(String(10))
+    postal_code_resolved: Mapped[str | None] = mapped_column(String(10))
+    postal_code_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     address: Mapped[str] = mapped_column(String(255), nullable=False)
     address_normalized: Mapped[str] = mapped_column(String(255), nullable=False)
     locality: Mapped[str | None] = mapped_column(String(255))
@@ -53,3 +57,6 @@ class Station(Base, TimestampMixin):
     current_prices = relationship("StationPriceCurrent", back_populates="station", cascade="all, delete-orphan")
     watchlists = relationship("UserWatchlist", back_populates="station")
 
+    @property
+    def effective_postal_code(self) -> str | None:
+        return self.postal_code_resolved or self.postal_code

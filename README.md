@@ -59,7 +59,8 @@ Mapping aplicado en el proyecto:
 
 - `IDEESS` -> `stations.ideess` como clave estable de estacion
 - `Dirección` -> `stations.address`
-- `C.P.` -> `stations.postal_code`
+- `C.P.` -> `stations.postal_code` como valor oficial bruto
+- `Latitud` + `Longitud_x0020__x0028_WGS84_x0029_` -> `stations.postal_code_resolved` usando reverse geocoding de CartoCiudad cuando esta disponible
 - `Municipio` -> `stations.municipality`
 - `Provincia` -> `stations.province`
 - `Localidad` -> `stations.locality`
@@ -75,6 +76,7 @@ Normalizacion y limpieza:
 - Valores vacios, cero, no numericos o invalidos se ignoran.
 - Coordenadas con coma decimal se convierten a `Numeric(10,7)`.
 - Los textos se guardan en version original y version normalizada sin acentos para filtrar rapido.
+- El bot usa como CP efectivo `stations.postal_code_resolved` y si no existe cae a `stations.postal_code`.
 
 ## 3. Modelo de base de datos
 
@@ -93,7 +95,7 @@ Tablas:
 
 Indices clave:
 
-- `stations`: indices por `postal_code`, `municipality_normalized`, `province_normalized`, `brand_normalized`, `locality_normalized`, `address_normalized`.
+- `stations`: indices por `postal_code`, `postal_code_resolved`, `municipality_normalized`, `province_normalized`, `brand_normalized`, `locality_normalized`, `address_normalized`.
 - `stations`: `FULLTEXT` MySQL en `brand`, `address`, `municipality`, `locality`.
 - `station_prices_current`: indice compuesto unico `(station_id, fuel_id)`.
 - `user_watchlists`: indice compuesto unico `(user_id, station_id, fuel_id)`.
@@ -192,6 +194,11 @@ Variables principales:
 - `MINETUR_API_URL`
 - `MINETUR_API_TIMEOUT_SECONDS`
 - `MINETUR_API_RETRIES`
+- `POSTAL_CODE_GEOCODER_ENABLED`
+- `POSTAL_CODE_GEOCODER_URL`
+- `POSTAL_CODE_GEOCODER_TIMEOUT_SECONDS`
+- `POSTAL_CODE_GEOCODER_BATCH_SIZE`
+- `POSTAL_CODE_GEOCODER_CONCURRENCY`
 - `SYNC_INTERVAL_MINUTES`
 - `RUN_SYNC_ON_STARTUP`
 - `SEARCH_RESULT_PAGE_SIZE`
@@ -311,4 +318,3 @@ Si el volumen crece:
 - se pueden particionar historicos por fecha
 - se puede mover la cola de notificaciones a un broker externo
 - se puede afinar `FULLTEXT` o buscador dedicado si aumenta mucho el trafico de busqueda
-

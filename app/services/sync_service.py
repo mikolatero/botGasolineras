@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.constants import FUEL_BY_DATASET_KEY, SUPPORTED_PRICE_KEYS
 from app.integrations.fuel_api import MineturApiClient
+from app.integrations.postal_code_api import CartoCiudadPostalCodeClient, PostalCodeResolution
 from app.repositories.fuels import FuelsRepository
 from app.repositories.notifications import NotificationsRepository
 from app.repositories.station_prices import StationPricesRepository
@@ -50,9 +51,15 @@ def _get_dataset_value(item: dict[str, Any], field_name: str) -> Any:
 
 
 class SyncService:
-    def __init__(self, session: AsyncSession, client: MineturApiClient) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        client: MineturApiClient,
+        postal_code_client: CartoCiudadPostalCodeClient | None = None,
+    ) -> None:
         self.session = session
         self.client = client
+        self.postal_code_client = postal_code_client
         self.fuels_repository = FuelsRepository(session)
         self.stations_repository = StationsRepository(session)
         self.station_prices_repository = StationPricesRepository(session)
@@ -71,6 +78,13 @@ class SyncService:
             dataset_timestamp, stations_payloads, price_snapshots = self._parse_dataset(payload, observed_at=started_at)
             existing_prices = await self.station_prices_repository.load_current_price_map()
             await self.stations_repository.upsert_many(stations_payloads)
+            postal_codes_resolved = 0
+            postal_codes_corrected = 0
+            if self.postal_code_client is not None and self.postal_code_client.enabled:
+                try:
+                    postal_codes_resolved, postal_codes_corrected = await self._resolve_pending_postal_codes(observed_at=started_at)
+                except Exception:
+                    logger.exception("Postal code enrichment failed")
 
             history_rows: list[dict[str, Any]] = []
             current_rows: list[dict[str, Any]] = []
@@ -163,6 +177,8 @@ class SyncService:
                 "price_rows_received": len(price_snapshots),
                 "price_rows_changed": len(history_rows),
                 "price_drops_detected": len(notification_rows),
+                "postal_codes_resolved": postal_codes_resolved,
+                "postal_codes_corrected": postal_codes_corrected,
                 "dataset_timestamp": dataset_timestamp.isoformat(),
             }
         except Exception as exc:
@@ -243,3 +259,51 @@ class SyncService:
 
         deduped_stations = {row["ideess"]: row for row in station_rows}
         return dataset_timestamp, list(deduped_stations.values()), price_snapshots
+
+    async def _resolve_pending_postal_codes(self, *, observed_at: datetime) -> tuple[int, int]:
+        if self.postal_code_client is None or self.postal_code_client.batch_size <= 0:
+            return 0, 0
+
+        stations = await self.stations_repository.list_pending_postal_code_resolution(
+            limit=self.postal_code_client.batch_size
+        )
+        if not stations:
+            return 0, 0
+
+        resolutions = await self.postal_code_client.resolve_postal_codes(
+            [
+                (station.ideess, station.latitude, station.longitude)
+                for station in stations
+                if station.latitude is not None and station.longitude is not None
+            ]
+        )
+
+        updates: list[dict[str, Any]] = []
+        corrected = 0
+        for station in stations:
+            resolution = resolutions.get(station.ideess)
+            if resolution is None or not resolution.checked:
+                continue
+            if self._postal_code_was_corrected(station.postal_code, resolution):
+                corrected += 1
+            updates.append(
+                {
+                    "ideess": station.ideess,
+                    "postal_code_resolved": resolution.postal_code,
+                    "postal_code_checked_at": observed_at,
+                }
+            )
+
+        await self.stations_repository.update_postal_code_resolutions(updates)
+        return len(updates), corrected
+
+    @staticmethod
+    def _postal_code_was_corrected(
+        official_postal_code: str | None,
+        resolution: PostalCodeResolution,
+    ) -> bool:
+        return bool(
+            official_postal_code
+            and resolution.postal_code
+            and official_postal_code != resolution.postal_code
+        )
