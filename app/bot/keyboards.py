@@ -33,8 +33,8 @@ class WatchlistCallback(CallbackData, prefix="watchlist"):
 
 
 FILTER_LABELS = {
-    "postal_code": "CP",
-    "radius_km": "Radio km",
+    "postal_code": "Codigo postal",
+    "radius_km": "Radio en KM",
     "province": "Provincia",
     "municipality": "Municipio",
     "locality": "Localidad",
