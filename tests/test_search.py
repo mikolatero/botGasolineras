@@ -3,8 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 from zoneinfo import ZoneInfo
 
+import pytest
+
+from app.bot import router
 from app.bot.keyboards import build_search_results
 from app.bot.router import _render_filter_summary, _render_search_results_text
 from app.models.station import Station
@@ -235,3 +239,18 @@ def test_render_filter_summary_shows_fuel_name_instead_of_id() -> None:
 
     assert "• <b>Combustible:</b> Gasoleo A" in text
     assert "• <b>Combustible:</b> 1" not in text
+
+
+@pytest.mark.asyncio
+async def test_search_clear_handler_skips_menu_refresh_when_no_filters(monkeypatch) -> None:
+    show_search_menu = AsyncMock()
+    monkeypatch.setattr(router, "_show_search_menu", show_search_menu)
+
+    callback = SimpleNamespace(answer=AsyncMock())
+    state = SimpleNamespace(get_data=AsyncMock(return_value={}), clear=AsyncMock())
+
+    await router.search_clear_handler(callback, state)
+
+    state.clear.assert_awaited_once()
+    show_search_menu.assert_not_awaited()
+    callback.answer.assert_awaited_once_with("No habia filtros activos.")

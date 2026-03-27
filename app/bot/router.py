@@ -103,6 +103,22 @@ def _filters_from_state(data: dict) -> SearchFilters:
     )
 
 
+def _has_search_filters(data: dict) -> bool:
+    return any(
+        data.get(key)
+        for key in (
+            "postal_code",
+            "radius_km",
+            "province",
+            "municipality",
+            "locality",
+            "brand",
+            "address_text",
+            "fuel_id",
+        )
+    )
+
+
 def _render_filter_summary(filters: dict[str, str | int | None]) -> str:
     parts = []
     for key, value in filters.items():
@@ -289,7 +305,11 @@ async def search_run_handler(callback: CallbackQuery, state: FSMContext) -> None
 
 @router.callback_query(SearchMenuCallback.filter(F.action == "clear"))
 async def search_clear_handler(callback: CallbackQuery, state: FSMContext) -> None:
+    data = await state.get_data()
     await state.clear()
+    if not _has_search_filters(data):
+        await callback.answer("No habia filtros activos.")
+        return
     await _show_search_menu(callback, state)
 
 
