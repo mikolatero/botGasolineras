@@ -51,6 +51,8 @@ class CartoCiudadPostalCodeClient:
                             params={"lat": format(latitude, "f"), "lon": format(longitude, "f")},
                             headers={"Accept": "application/json"},
                         )
+                        if response.status_code == httpx.codes.NO_CONTENT:
+                            return station_id, PostalCodeResolution(postal_code=None, checked=True)
                         response.raise_for_status()
                         payload = response.json()
                         if not isinstance(payload, dict):

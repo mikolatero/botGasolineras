@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
+import httpx
+
 from app.integrations.postal_code_api import PostalCodeResolution
+from app.integrations.postal_code_api import CartoCiudadPostalCodeClient
 from app.repositories.stations import StationsRepository
 from app.services.search_service import SearchFilters, SearchService
 from app.services.sync_service import SyncService
@@ -84,3 +89,60 @@ async def test_sync_keeps_official_postal_code_and_uses_resolved_one_for_search(
         stations, total = await service.search(SearchFilters(postal_code="30520"), page=1, page_size=10)
         assert total == 0
         assert stations == []
+
+
+class _FakePostalResponse:
+    def __init__(self, status_code: int, payload: dict | None = None) -> None:
+        self.status_code = status_code
+        self._payload = payload
+
+    def raise_for_status(self) -> None:
+        if self.status_code >= 400:
+            raise httpx.HTTPStatusError(
+                "boom",
+                request=httpx.Request("GET", "https://example.com"),
+                response=httpx.Response(self.status_code, request=httpx.Request("GET", "https://example.com")),
+            )
+
+    def json(self):
+        if self._payload is None:
+            raise ValueError("no json")
+        return self._payload
+
+
+class _FakePostalAsyncClient:
+    def __init__(self, response: _FakePostalResponse) -> None:
+        self.response = response
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return None
+
+    async def get(self, url, params=None, headers=None):
+        return self.response
+
+
+async def test_postal_code_client_treats_204_as_checked_without_warning(monkeypatch, caplog) -> None:
+    settings = type(
+        "SettingsStub",
+        (),
+        {
+            "postal_code_geocoder_enabled": True,
+            "postal_code_geocoder_url": "https://example.com/reverse",
+            "postal_code_geocoder_timeout_seconds": 5,
+            "postal_code_geocoder_batch_size": 100,
+            "postal_code_geocoder_concurrency": 1,
+            "outbound_http_trust_env": False,
+            "outbound_http_ca_bundle": None,
+        },
+    )()
+    client = CartoCiudadPostalCodeClient(settings)
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: _FakePostalAsyncClient(_FakePostalResponse(status_code=204)))
+
+    result = await client.resolve_postal_codes([("123", Decimal("1.0"), Decimal("2.0"))])
+
+    assert result["123"] == PostalCodeResolution(postal_code=None, checked=True)
+    assert "Postal code lookup failed" not in caplog.text
