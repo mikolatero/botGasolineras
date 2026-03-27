@@ -10,6 +10,10 @@ def format_price(value: Decimal) -> str:
     return f"{value:.3f} €/L"
 
 
+def format_compact_price(value: Decimal) -> str:
+    return f"{value:.3f}€/L"
+
+
 def format_notification_message(notification: NotificationSent) -> str:
     station = notification.station
     fuel = notification.fuel

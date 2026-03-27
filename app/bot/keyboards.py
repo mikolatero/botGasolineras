@@ -6,6 +6,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.config.constants import FUEL_BY_ID
 from app.models.enums import WatchlistStatus
+from app.utils.formatting import format_compact_price
 
 
 class SearchMenuCallback(CallbackData, prefix="searchmenu"):
@@ -89,13 +90,20 @@ def build_station_fuels(station_id: str, station_fuels, page: int):
     return builder.as_markup()
 
 
-def build_watchlist_actions(watchlists, page: int, total: int, page_size: int):
+def build_watchlist_actions(watchlists, page: int, total: int, page_size: int, price_map: dict[tuple[str, int], object] | None = None):
     builder = InlineKeyboardBuilder()
+    price_map = price_map or {}
     for watchlist in watchlists:
         status = "⏸" if watchlist.status == WatchlistStatus.PAUSED else "▶️"
+        price_row = price_map.get((watchlist.station_id, watchlist.fuel_id))
+        price_text = (
+            f" | {format_compact_price(price_row.current_price)}"
+            if price_row is not None
+            else ""
+        )
         builder.row(
             InlineKeyboardButton(
-                text=f"{status} {watchlist.station.brand} | {watchlist.fuel.name}",
+                text=f"{status} {watchlist.station.brand} | {watchlist.fuel.name}{price_text}",
                 callback_data=WatchlistCallback(action="noop", watchlist_id=watchlist.id, page=page).pack(),
             )
         )

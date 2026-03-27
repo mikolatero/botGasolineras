@@ -17,6 +17,22 @@ class StationPricesRepository(Repository):
         rows = result.scalars().all()
         return {(row.station_id, row.fuel_id): row for row in rows}
 
+    async def load_current_price_map_for_pairs(
+        self, pairs: Iterable[tuple[str, int]]
+    ) -> dict[tuple[str, int], StationPriceCurrent]:
+        keys = list(pairs)
+        if not keys:
+            return {}
+
+        result = await self.session.execute(
+            select(StationPriceCurrent).where(
+                tuple_(StationPriceCurrent.station_id, StationPriceCurrent.fuel_id).in_(keys),
+                StationPriceCurrent.is_available.is_(True),
+            )
+        )
+        rows = result.scalars().all()
+        return {(row.station_id, row.fuel_id): row for row in rows}
+
     async def upsert_current_many(self, payloads: list[dict]) -> None:
         if not payloads:
             return
@@ -61,4 +77,3 @@ class StationPricesRepository(Repository):
     async def insert_history_many(self, payloads: list[dict]) -> None:
         if payloads:
             await self.session.execute(StationPriceHistory.__table__.insert(), payloads)
-

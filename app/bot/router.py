@@ -23,11 +23,13 @@ from app.bot.states import SearchStates
 from app.config.database import SessionLocal
 from app.config.settings import get_settings
 from app.repositories.fuels import FuelsRepository
+from app.repositories.station_prices import StationPricesRepository
 from app.repositories.stations import StationsRepository
 from app.repositories.users import UsersRepository
 from app.repositories.watchlists import WatchlistsRepository
 from app.services.search_service import SearchFilters, SearchService
 from app.services.watchlist_service import WatchlistService
+from app.utils.formatting import format_compact_price
 from app.utils.parsing import digits_only
 
 router = Router()
@@ -83,16 +85,19 @@ def _render_search_results_text(stations, page: int, total: int, page_size: int)
     return "\n".join(lines)
 
 
-def _render_watchlists_text(watchlists, page: int, total: int, page_size: int) -> str:
+def _render_watchlists_text(watchlists, page: int, total: int, page_size: int, price_map: dict[tuple[str, int], object] | None = None) -> str:
+    price_map = price_map or {}
     total_pages = max(1, ceil(total / page_size))
     lines = [f"<b>Mis seguimientos</b> ({total}) - pagina {page}/{total_pages}"]
     if not watchlists:
         lines.append("Todavia no tienes seguimientos.")
     for watchlist in watchlists:
         status = "Activa" if watchlist.status.value == "active" else "Pausada"
+        price_row = price_map.get((watchlist.station_id, watchlist.fuel_id))
+        price_text = f" | {format_compact_price(price_row.current_price)}" if price_row is not None else ""
         lines.append(
-            f"#{watchlist.id} | <b>{watchlist.station.brand}</b> - {watchlist.station.address}, "
-            f"{watchlist.station.municipality} | {watchlist.fuel.name} | {status}"
+            f"<b>{watchlist.station.brand}</b> - {watchlist.station.address}, "
+            f"{watchlist.station.municipality} | {watchlist.fuel.name}{price_text} | {status}"
         )
     return "\n".join(lines)
 
@@ -150,8 +155,11 @@ async def _show_watchlists(target: Message | CallbackQuery, user_id: int, page: 
     async with SessionLocal() as session:
         service = WatchlistService(WatchlistsRepository(session))
         watchlists, total = await service.list_user_watchlists(user_id, page, settings.watchlist_page_size)
-    text = _render_watchlists_text(watchlists, page, total, settings.watchlist_page_size)
-    markup = build_watchlist_actions(watchlists, page, total, settings.watchlist_page_size)
+        price_map = await StationPricesRepository(session).load_current_price_map_for_pairs(
+            (watchlist.station_id, watchlist.fuel_id) for watchlist in watchlists
+        )
+    text = _render_watchlists_text(watchlists, page, total, settings.watchlist_page_size, price_map)
+    markup = build_watchlist_actions(watchlists, page, total, settings.watchlist_page_size, price_map)
     if isinstance(target, Message):
         await target.answer(text, reply_markup=markup)
     else:
