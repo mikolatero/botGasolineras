@@ -67,15 +67,34 @@ def build_fuel_picker(prefix: str):
 
 def build_search_results(stations, page: int, total: int, page_size: int):
     builder = InlineKeyboardBuilder()
-    for station in stations:
-        label = f"{station.brand} | {station.municipality} | {station.address[:28]}"
-        builder.button(text=label, callback_data=SearchResultCallback(action="station", value=station.ideess, page=page).pack())
+    for idx, station in enumerate(stations, start=1 + (page - 1) * page_size):
+        label = f"{idx}. {station.brand} | {station.municipality} | {station.address[:28]}"
+        builder.row(
+            InlineKeyboardButton(
+                text=label,
+                callback_data=SearchResultCallback(action="station", value=station.ideess, page=page).pack(),
+            )
+        )
     if page > 1:
-        builder.button(text="⬅️ Anterior", callback_data=SearchResultCallback(action="page", value=str(page - 1), page=page - 1).pack())
+        builder.row(
+            InlineKeyboardButton(
+                text="⬅️ Anterior",
+                callback_data=SearchResultCallback(action="page", value=str(page - 1), page=page - 1).pack(),
+            )
+        )
     if page * page_size < total:
-        builder.button(text="Siguiente ➡️", callback_data=SearchResultCallback(action="page", value=str(page + 1), page=page + 1).pack())
-    builder.button(text="Editar filtros", callback_data=SearchResultCallback(action="filters", value="0", page=page).pack())
-    builder.adjust(1, 2, 1)
+        builder.row(
+            InlineKeyboardButton(
+                text="Siguiente ➡️",
+                callback_data=SearchResultCallback(action="page", value=str(page + 1), page=page + 1).pack(),
+            )
+        )
+    builder.row(
+        InlineKeyboardButton(
+            text="Editar filtros",
+            callback_data=SearchResultCallback(action="filters", value="0", page=page).pack(),
+        )
+    )
     return builder.as_markup()
 
 

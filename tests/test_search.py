@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
+from app.bot.keyboards import build_search_results
 from app.models.station import Station
 from app.models.station_price import StationPriceCurrent
 from app.repositories.stations import StationsRepository
@@ -89,3 +91,19 @@ async def test_search_filters_against_local_database(session_factory) -> None:
         assert total == 1
         assert stations[0].ideess == "200"
 
+
+def test_build_search_results_uses_one_button_per_row_and_matching_indexes() -> None:
+    stations = [
+        SimpleNamespace(ideess="300", brand="MOEVE", municipality="Murcia", address="CARRETERA MU-611 KM. 3"),
+        SimpleNamespace(ideess="301", brand="CAMPSA EXPRESS", municipality="Murcia", address="PG INDTL. OESTE S. GINES PARC., 29"),
+    ]
+
+    markup = build_search_results(stations, page=2, total=12, page_size=5)
+
+    assert [[button.text for button in row] for row in markup.inline_keyboard] == [
+        ["6. MOEVE | Murcia | CARRETERA MU-611 KM. 3"],
+        ["7. CAMPSA EXPRESS | Murcia | PG INDTL. OESTE S. GINES PAR"],
+        ["⬅️ Anterior"],
+        ["Siguiente ➡️"],
+        ["Editar filtros"],
+    ]
