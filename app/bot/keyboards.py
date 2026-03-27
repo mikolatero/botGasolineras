@@ -113,10 +113,21 @@ def build_watchlist_actions(watchlists, page: int, total: int, page_size: int):
                 callback_data=WatchlistCallback(action="delete", watchlist_id=watchlist.id, page=page).pack(),
             ),
         )
+    navigation_buttons = []
     if page > 1:
-        builder.button(text="⬅️ Anterior", callback_data=WatchlistCallback(action="page", watchlist_id=0, page=page - 1).pack())
+        navigation_buttons.append(
+            InlineKeyboardButton(
+                text="⬅️ Anterior",
+                callback_data=WatchlistCallback(action="page", watchlist_id=0, page=page - 1).pack(),
+            )
+        )
     if page * page_size < total:
-        builder.button(text="Siguiente ➡️", callback_data=WatchlistCallback(action="page", watchlist_id=0, page=page + 1).pack())
-    builder.adjust(1, 2, 2)
+        navigation_buttons.append(
+            InlineKeyboardButton(
+                text="Siguiente ➡️",
+                callback_data=WatchlistCallback(action="page", watchlist_id=0, page=page + 1).pack(),
+            )
+        )
+    if navigation_buttons:
+        builder.row(*navigation_buttons)
     return builder.as_markup()
-

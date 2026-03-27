@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
+from app.bot.keyboards import build_watchlist_actions
+from app.models.enums import WatchlistStatus
 from app.models.station import Station
 from app.models.user import User
 from app.repositories.watchlists import WatchlistsRepository
@@ -43,3 +47,29 @@ async def test_watchlist_unique_and_reactivation(session_factory) -> None:
         assert created is False
         assert watchlist.status.value == "active"
         await session.commit()
+
+
+def test_build_watchlist_actions_keeps_each_watchlist_grouped() -> None:
+    watchlists = [
+        SimpleNamespace(
+            id=7,
+            status=WatchlistStatus.ACTIVE,
+            station=SimpleNamespace(brand="SERMUCO"),
+            fuel=SimpleNamespace(name="Gasoleo A"),
+        ),
+        SimpleNamespace(
+            id=1,
+            status=WatchlistStatus.PAUSED,
+            station=SimpleNamespace(brand="CAMPSA EXPRESS"),
+            fuel=SimpleNamespace(name="Gasoleo A"),
+        ),
+    ]
+
+    markup = build_watchlist_actions(watchlists, page=1, total=2, page_size=10)
+
+    assert [[button.text for button in row] for row in markup.inline_keyboard] == [
+        ["▶️ SERMUCO | Gasoleo A"],
+        ["Pausar", "Eliminar"],
+        ["⏸ CAMPSA EXPRESS | Gasoleo A"],
+        ["Reanudar", "Eliminar"],
+    ]
