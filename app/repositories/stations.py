@@ -107,6 +107,23 @@ class StationsRepository(Repository):
             ],
         )
 
+    async def reset_postal_code_resolution_status(self, *, clear_resolved: bool = False) -> int:
+        values: dict[str, object] = {"postal_code_checked_at": None}
+        if clear_resolved:
+            values["postal_code_resolved"] = None
+
+        statement = (
+            update(Station.__table__)
+            .where(
+                Station.is_active.is_(True),
+                Station.latitude.is_not(None),
+                Station.longitude.is_not(None),
+            )
+            .values(**values)
+        )
+        result = await self.session.execute(statement)
+        return int(result.rowcount or 0)
+
     async def search(
         self,
         *,

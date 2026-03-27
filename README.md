@@ -140,6 +140,7 @@ Entrypoints:
 
 - `python -m app.run_bot`
 - `python -m app.run_worker`
+- `python -m app.run_postal_code_backfill`
 
 ## 6. Instalacion local
 
@@ -223,6 +224,22 @@ Variables principales:
 - envia notificaciones por Telegram
 
 No se consulta la API por cada busqueda. Solo se hace sync completo.
+
+## 8.1 Backfill manual de codigos postales
+
+Para refrescar los codigos postales resueltos sin mezclarlo con la sync de precios existe un comando dedicado:
+
+```bash
+python -m app.run_postal_code_backfill --reset-all --delay-seconds 2 --max-batches 0
+```
+
+Notas:
+
+- `--reset-all` reabre toda la cola de estaciones activas con coordenadas.
+- `--clear-resolved` borra tambien `postal_code_resolved` antes del refresco; normalmente no hace falta.
+- `--delay-seconds` mete una pausa entre lotes para no cargar el geocoder.
+- `--max-batches 0` significa procesar hasta vaciar la cola.
+- Recomendacion practica: ejecutar este comando con el `worker` parado o con `POSTAL_CODE_GEOCODER_ENABLED=false` en el `worker` habitual, para evitar lookups duplicados mientras dura el backfill.
 
 ## 9. Notificaciones
 
