@@ -354,7 +354,7 @@ async def result_filters_handler(callback: CallbackQuery, state: FSMContext) -> 
 async def station_select_handler(callback: CallbackQuery, callback_data: SearchResultCallback) -> None:
     async with SessionLocal() as session:
         service = SearchService(StationsRepository(session))
-        station = await StationsRepository(session).get_by_ideess(callback_data.value)
+        station = await StationsRepository(session).get_by_ideess(callback_data.value, public_only=True)
         station_fuels = await service.list_station_fuels(callback_data.value)
     if station is None or not station_fuels:
         await callback.answer("La estacion no tiene combustibles disponibles ahora mismo.", show_alert=True)
@@ -376,7 +376,7 @@ async def station_fuel_handler(callback: CallbackQuery, callback_data: StationFu
         watchlist_service = WatchlistService(WatchlistsRepository(session))
         stations_repository = StationsRepository(session)
         fuels_repository = FuelsRepository(session)
-        station = await stations_repository.get_by_ideess(callback_data.station_id)
+        station = await stations_repository.get_by_ideess(callback_data.station_id, public_only=True)
         fuel = await fuels_repository.get_by_id(callback_data.fuel_id)
         if station is None or fuel is None:
             await callback.answer("No he podido crear el seguimiento.", show_alert=True)

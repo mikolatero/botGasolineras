@@ -65,8 +65,11 @@ class StationsRepository(Repository):
         )
         await self.session.execute(statement)
 
-    async def get_by_ideess(self, ideess: str) -> Station | None:
-        result = await self.session.execute(select(Station).where(Station.ideess == ideess))
+    async def get_by_ideess(self, ideess: str, *, public_only: bool = False) -> Station | None:
+        filters = [Station.ideess == ideess]
+        if public_only:
+            filters.append(func.upper(Station.sale_type) == "P")
+        result = await self.session.execute(select(Station).where(*filters))
         return result.scalar_one_or_none()
 
     async def get_postal_code_centroid(self, postal_code: str) -> tuple[Decimal, Decimal] | None:
@@ -161,7 +164,10 @@ class StationsRepository(Repository):
         page: int = 1,
         page_size: int = 5,
     ) -> tuple[list[Station], int]:
-        filters = [Station.is_active.is_(True)]
+        filters = [
+            Station.is_active.is_(True),
+            func.upper(Station.sale_type) == "P",
+        ]
         distance_order_expr = None
         matched_price_expr = None
         postal_code_filter = None

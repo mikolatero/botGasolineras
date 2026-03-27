@@ -33,6 +33,7 @@ async def test_search_filters_against_local_database(session_factory) -> None:
             province_normalized="murcia",
             brand="Repsol",
             brand_normalized="repsol",
+            sale_type="P",
             is_active=True,
         )
         station_two = Station(
@@ -48,6 +49,7 @@ async def test_search_filters_against_local_database(session_factory) -> None:
             province_normalized="valencia",
             brand="Cepsa",
             brand_normalized="cepsa",
+            sale_type="P",
             is_active=True,
         )
         session.add_all([station_one, station_two])
@@ -113,6 +115,7 @@ async def test_search_with_fuel_orders_results_by_price_ascending(session_factor
             province_normalized="murcia",
             brand="Marca Cara",
             brand_normalized="marca cara",
+            sale_type="P",
             is_active=True,
         )
         station_two = Station(
@@ -128,6 +131,7 @@ async def test_search_with_fuel_orders_results_by_price_ascending(session_factor
             province_normalized="murcia",
             brand="Marca Barata",
             brand_normalized="marca barata",
+            sale_type="P",
             is_active=True,
         )
         session.add_all([station_one, station_two])
@@ -166,6 +170,87 @@ async def test_search_with_fuel_orders_results_by_price_ascending(session_factor
         assert total == 2
         assert [station.ideess for station in stations] == ["301", "300"]
         assert [station.search_price for station in stations] == [Decimal("1.429"), Decimal("1.599")]
+
+
+async def test_search_only_returns_public_sale_type_stations(session_factory) -> None:
+    async with session_factory() as session:
+        session.add_all(
+            [
+                Station(
+                    ideess="700",
+                    postal_code="30001",
+                    address="Publica 1",
+                    address_normalized="publica 1",
+                    locality="Murcia",
+                    locality_normalized="murcia",
+                    municipality="Murcia",
+                    municipality_normalized="murcia",
+                    province="Murcia",
+                    province_normalized="murcia",
+                    brand="Marca Publica",
+                    brand_normalized="marca publica",
+                    sale_type="P",
+                    is_active=True,
+                ),
+                Station(
+                    ideess="701",
+                    postal_code="30001",
+                    address="Privada 2",
+                    address_normalized="privada 2",
+                    locality="Murcia",
+                    locality_normalized="murcia",
+                    municipality="Murcia",
+                    municipality_normalized="murcia",
+                    province="Murcia",
+                    province_normalized="murcia",
+                    brand="Marca Privada",
+                    brand_normalized="marca privada",
+                    sale_type="R",
+                    is_active=True,
+                ),
+            ]
+        )
+        await session.commit()
+
+    async with session_factory() as session:
+        service = SearchService(StationsRepository(session))
+        stations, total = await service.search(
+            SearchFilters(postal_code="30001"),
+            page=1,
+            page_size=10,
+        )
+
+        assert total == 1
+        assert [station.ideess for station in stations] == ["700"]
+
+
+async def test_get_by_ideess_public_only_excludes_private_stations(session_factory) -> None:
+    async with session_factory() as session:
+        session.add(
+            Station(
+                ideess="702",
+                postal_code="30001",
+                address="Privada 3",
+                address_normalized="privada 3",
+                locality="Murcia",
+                locality_normalized="murcia",
+                municipality="Murcia",
+                municipality_normalized="murcia",
+                province="Murcia",
+                province_normalized="murcia",
+                brand="Marca Restringida",
+                brand_normalized="marca restringida",
+                sale_type="R",
+                is_active=True,
+            )
+        )
+        await session.commit()
+
+    async with session_factory() as session:
+        repository = StationsRepository(session)
+
+        assert await repository.get_by_ideess("702") is not None
+        assert await repository.get_by_ideess("702", public_only=True) is None
 
 
 def test_build_search_results_uses_one_button_per_row_and_matching_indexes() -> None:
