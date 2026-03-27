@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     )
     minetur_api_timeout_seconds: int = Field(30, alias="MINETUR_API_TIMEOUT_SECONDS")
     minetur_api_retries: int = Field(6, alias="MINETUR_API_RETRIES")
+    minetur_api_enable_curl_fallback: bool = Field(True, alias="MINETUR_API_ENABLE_CURL_FALLBACK")
     postal_code_geocoder_enabled: bool = Field(True, alias="POSTAL_CODE_GEOCODER_ENABLED")
     postal_code_geocoder_url: str = Field(
         "https://www.cartociudad.es/geocoder/api/geocoder/reverseGeocode",

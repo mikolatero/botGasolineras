@@ -39,6 +39,7 @@ async def test_fuel_api_reports_error_type_when_connect_error_has_no_message(mon
         minetur_api_url="https://example.com/dataset",
         minetur_api_timeout_seconds=5,
         minetur_api_retries=2,
+        minetur_api_enable_curl_fallback=False,
         outbound_http_trust_env=False,
         outbound_http_ca_bundle=None,
     )
@@ -80,6 +81,7 @@ async def test_fuel_api_uses_explicit_http_client_configuration(monkeypatch) -> 
         minetur_api_url="https://example.com/dataset",
         minetur_api_timeout_seconds=5,
         minetur_api_retries=1,
+        minetur_api_enable_curl_fallback=False,
         outbound_http_trust_env=False,
         outbound_http_ca_bundle="/etc/ssl/certs/ca-certificates.crt",
     )
@@ -92,6 +94,32 @@ async def test_fuel_api_uses_explicit_http_client_configuration(monkeypatch) -> 
     assert payload["ListaEESSPrecio"] == []
     assert captured_kwargs["trust_env"] is False
     assert captured_kwargs["verify"] == "/etc/ssl/certs/ca-certificates.crt"
+
+
+@pytest.mark.asyncio
+async def test_fuel_api_falls_back_to_curl_when_httpx_connect_fails(monkeypatch) -> None:
+    settings = SimpleNamespace(
+        minetur_api_url="https://example.com/dataset",
+        minetur_api_timeout_seconds=5,
+        minetur_api_retries=1,
+        minetur_api_enable_curl_fallback=True,
+        outbound_http_trust_env=False,
+        outbound_http_ca_bundle=None,
+    )
+    client = MineturApiClient(settings)
+
+    async def _fail_httpx(*, headers):
+        raise httpx.ConnectError("")
+
+    async def _ok_curl(*, headers):
+        return {"Fecha": "27/03/2026 09:30:00", "ListaEESSPrecio": []}
+
+    monkeypatch.setattr(client, "_fetch_dataset_via_httpx", _fail_httpx)
+    monkeypatch.setattr(client, "_fetch_dataset_via_curl", _ok_curl)
+
+    payload = await client.fetch_dataset()
+
+    assert payload["ListaEESSPrecio"] == []
 
 
 @pytest.mark.asyncio
