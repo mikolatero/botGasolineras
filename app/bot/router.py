@@ -80,7 +80,7 @@ def _render_search_results_text(stations, page: int, total: int, page_size: int)
     lines = [f"<b>Resultados</b> ({total}) - pagina {page}/{total_pages}"]
     for idx, station in enumerate(stations, start=1 + (page - 1) * page_size):
         lines.append(
-            f"{idx}. <b>{station.brand}</b> - {station.address}, {station.municipality} ({station.effective_postal_code or 's/cp'})"
+            f"{idx}. <b>{station.brand}</b> - {station.address}, {station.municipality} ({station.postal_code_display or 's/cp'})"
         )
     return "\n".join(lines)
 
@@ -270,7 +270,7 @@ async def station_select_handler(callback: CallbackQuery, callback_data: SearchR
         return
     text = (
         f"<b>{station.brand}</b>\n"
-        f"{station.address}, {station.municipality} ({station.effective_postal_code or 's/cp'})\n"
+        f"{station.address}, {station.municipality} ({station.postal_code_display or 's/cp'})\n"
         f"Horario: {station.schedule or 'No disponible'}\n\n"
         "Selecciona el combustible para crear el seguimiento."
     )

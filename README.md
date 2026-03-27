@@ -77,6 +77,7 @@ Normalizacion y limpieza:
 - Coordenadas con coma decimal se convierten a `Numeric(10,7)`.
 - Los textos se guardan en version original y version normalizada sin acentos para filtrar rapido.
 - El bot usa como CP efectivo `stations.postal_code_resolved` y si no existe cae a `stations.postal_code`.
+- Los filtros por CP aceptan tanto el CP oficial como el resuelto por coordenadas para no perder estaciones en limites postales muy pegados.
 
 ## 3. Modelo de base de datos
 

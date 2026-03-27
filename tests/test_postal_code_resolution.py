@@ -76,6 +76,7 @@ async def test_sync_keeps_official_postal_code_and_uses_resolved_one_for_search(
         assert station.postal_code == "30520"
         assert station.postal_code_resolved == "30820"
         assert station.effective_postal_code == "30820"
+        assert station.postal_code_display == "30820 / oficial 30520"
 
     async with session_factory() as session:
         service = SearchService(StationsRepository(session))
@@ -87,8 +88,9 @@ async def test_sync_keeps_official_postal_code_and_uses_resolved_one_for_search(
     async with session_factory() as session:
         service = SearchService(StationsRepository(session))
         stations, total = await service.search(SearchFilters(postal_code="30520"), page=1, page_size=10)
-        assert total == 0
-        assert stations == []
+        assert total == 1
+        assert len(stations) == 1
+        assert stations[0].ideess == "55555"
 
 
 class _FakePostalResponse:

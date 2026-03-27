@@ -60,3 +60,12 @@ class Station(Base, TimestampMixin):
     @property
     def effective_postal_code(self) -> str | None:
         return self.postal_code_resolved or self.postal_code
+
+    @property
+    def postal_code_display(self) -> str | None:
+        effective = self.effective_postal_code
+        if effective is None:
+            return None
+        if self.postal_code and self.postal_code_resolved and self.postal_code != self.postal_code_resolved:
+            return f"{effective} / oficial {self.postal_code}"
+        return effective

@@ -142,7 +142,7 @@ class StationsRepository(Repository):
             filters.append(
                 or_(
                     Station.postal_code_resolved == postal_code,
-                    and_(Station.postal_code_resolved.is_(None), Station.postal_code == postal_code),
+                    Station.postal_code == postal_code,
                 )
             )
         if province:
