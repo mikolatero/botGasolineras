@@ -2,6 +2,12 @@
 
 Bot publico de Telegram para monitorizar bajadas de precio del combustible en gasolineras de Espana usando el dataset oficial de `EstacionesTerrestres`.
 
+[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/avisadorgasolina_bot)
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/mikolatero/botGasolineras)
+
+
+
 ## 1. Arquitectura
 
 El sistema se divide en dos procesos:
