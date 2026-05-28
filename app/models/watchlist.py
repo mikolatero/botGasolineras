@@ -36,4 +36,9 @@ class UserWatchlist(Base, TimestampMixin):
     user = relationship("User", back_populates="watchlists")
     station = relationship("Station", back_populates="watchlists")
     fuel = relationship("Fuel", back_populates="watchlists")
-    notifications = relationship("NotificationSent", back_populates="watchlist")
+    notifications = relationship(
+        "NotificationSent",
+        back_populates="watchlist",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

@@ -5,12 +5,17 @@ from decimal import Decimal
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
+from sqlalchemy import func, select
+
 from app.bot.keyboards import build_watchlist_actions
 from app.bot.router import _render_watchlists_text
 from app.models.enums import WatchlistStatus
+from app.models.notification import NotificationSent
 from app.models.station import Station
 from app.models.station_price import StationPriceCurrent
+from app.models.sync_run import SyncRun
 from app.models.user import User
+from app.models.watchlist import UserWatchlist
 from app.repositories.station_prices import StationPricesRepository
 from app.repositories.watchlists import WatchlistsRepository
 from app.utils.timezone import now_madrid
@@ -53,6 +58,60 @@ async def test_watchlist_unique_and_reactivation(session_factory) -> None:
         assert created is False
         assert watchlist.status.value == "active"
         await session.commit()
+
+
+async def test_delete_watchlist_cascades_existing_notifications(session_factory) -> None:
+    tz = ZoneInfo("Europe/Madrid")
+    dataset_timestamp = datetime(2026, 3, 27, 11, 30, tzinfo=tz)
+
+    async with session_factory() as session:
+        session.add(
+            Station(
+                ideess="300",
+                postal_code="28001",
+                address="Calle Alcala 1",
+                address_normalized="calle alcala 1",
+                locality="Madrid",
+                locality_normalized="madrid",
+                municipality="Madrid",
+                municipality_normalized="madrid",
+                province="Madrid",
+                province_normalized="madrid",
+                brand="BP",
+                brand_normalized="bp",
+                is_active=True,
+            )
+        )
+        user = User(telegram_user_id=223, username="delete_watcher", first_name="Delete", last_name="Watcher")
+        sync_run = SyncRun(started_at=dataset_timestamp, dataset_timestamp=dataset_timestamp)
+        session.add_all([user, sync_run])
+        await session.flush()
+
+        repository = WatchlistsRepository(session)
+        watchlist, created = await repository.create_or_reactivate(user.id, "300", 1)
+        assert created is True
+        session.add(
+            NotificationSent(
+                watchlist_id=watchlist.id,
+                sync_run_id=sync_run.id,
+                station_id="300",
+                fuel_id=1,
+                previous_price=Decimal("1.600"),
+                new_price=Decimal("1.500"),
+                dataset_timestamp=dataset_timestamp,
+            )
+        )
+        await session.flush()
+
+        await repository.delete(watchlist)
+        await session.commit()
+
+    async with session_factory() as session:
+        total_watchlists = await session.scalar(select(func.count(UserWatchlist.id)))
+        total_notifications = await session.scalar(select(func.count(NotificationSent.id)))
+
+    assert total_watchlists == 0
+    assert total_notifications == 0
 
 
 def test_build_watchlist_actions_keeps_each_watchlist_grouped() -> None:
